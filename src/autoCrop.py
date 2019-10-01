@@ -8,9 +8,10 @@ Created on 30 ago 2019
 
 from PIL import Image
 import os
+from builtins import input
 
 JPG_SOURCE_PATH = r's:\Disegni_listini\Europrofili'
-JPG_SOURCE_PATH = r'c:\Users\Marco\symfony4\eurolist\public\jpgs'
+#JPG_SOURCE_PATH = r'c:\Users\Marco\symfony4\eurolist\public\jpgs'
 JPG_DESTINATION_PATH = r'c:\Users\marco\Documents\Stampe\jpgs'
 
 def isPortrait(size):
@@ -20,25 +21,50 @@ def isPortrait(size):
         return False
     
 def isWhite(pixel):
-    if pixel == (255,255,255):
+    if type(pixel) == tuple and pixel == (255,255,255):
+        return True
+    elif pixel >= 220:
         return True
     else:
         return False
     
-def getBoundBox(im): #image object    
-    left,upper,right,lower = im.size[0],im.size[1],0,0
-    px = im.load()
-    for x in range(im.size[0]):
-        for y in range(im.size[1]):
+def addAlpha(image, limit = 255):
+    img = image.convert("RGBA")
+    
+    pixdata = img.load()
+    
+    width, height = image.size
+    for y in range(height):
+        for x in range(width):
+            #print(pixdata[x, y])
+            i = pixdata[x, y]
+            if i[0] >= limit and i[1] >= limit and i[2] >= limit and i[3] >= limit:  
+                pixdata[x, y] = (255, 255, 255, 0)    
+    return img
+    
+def getBoundBox(image, border = 0): #image object
+    left,upper,right,lower = image.size[0]-border,image.size[1]-border,0,0
+    px = image.load()
+    for x in range(border, image.size[0]-border):
+        for y in range(border, image.size[1]-border):
             if not(isWhite(px[x,y])):
                 if x < left:  left = x
                 if y < upper: upper = y
                 if x > right: right = x
                 if y > lower: lower = y
-    box = (left,upper,right,lower) #left,upper,right,lower
+                #input("{} : {} {} {} {}".format(px[x,y],left,upper,right,lower))
+    box = (left+2,upper+2,right+2,lower+2) #left,upper,right,lower
     return box
 
-def autoCrop():    
+def landscapeIt(image):
+    if isPortrait(image.size):
+        return image.rotate(-90, expand=True)
+    
+def autoCrop(image):
+    b = getBoundBox(image)
+    return image.crop(b)
+
+def test():    
     with os.scandir(JPG_SOURCE_PATH) as jpgs:
         for entry in jpgs:
             if not entry.name.startswith('.') and entry.is_file() and entry.name.endswith('jpg'):
@@ -54,9 +80,13 @@ def autoCrop():
 #                         im2.save(os.path.join(JPG_DESTINATION_PATH, entry.name))
 
 if __name__ == '__main__':
-    imfile = r"c:\Users\Marco\symfony4\eurolist\public\jpgs\16000720.jpg"
+    imfile = r"c:\Users\marco\Documents\Stampe\jpg300\C.535.12.jpg"
     im = Image.open(imfile)
-    b = getBoundBox(im)
+    b = getBoundBox(im,10)
+    print(im.size, b)
     im_crop = im.crop(b)
-    im_crop.save(os.path.join(JPG_DESTINATION_PATH, 'prova.jpg'))
-    im
+    im_alpha = addAlpha(im_crop, 200)
+    
+    im_alpha.save(os.path.join(JPG_DESTINATION_PATH, 'prova.png'), "PNG")
+    
+    
